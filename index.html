@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChatGPT Web Client</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f2f5;
+    }
+    #chat-container {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 600px;
+      height: 80vh;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem;
+      background: #4a90e2;
+      color: #fff;
+      font-weight: bold;
+    }
+    #new-chat {
+      background: #fff;
+      color: #4a90e2;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    #new-chat:hover { background: #e1eaff; }
+    #messages {
+      flex: 1;
+      padding: 1rem;
+      overflow-y: auto;
+    }
+    .message { margin-bottom: 0.75rem; line-height: 1.4; }
+    .message.user { text-align: right; }
+    .message.user .bubble {
+      display: inline-block;
+      background: #e1ffc7;
+      color: #333;
+      padding: 0.6rem 1rem;
+      border-radius: 16px 16px 0 16px;
+      max-width: 70%;
+    }
+    .message.bot .bubble {
+      display: inline-block;
+      background: #f1f0f0;
+      color: #333;
+      padding: 0.6rem 1rem;
+      border-radius: 16px 16px 16px 0;
+      max-width: 70%;
+    }
+    footer {
+      display: flex;
+      padding: 0.75rem;
+      border-top: 1px solid #ddd;
+      background: #fafafa;
+    }
+    #input {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      border: 1px solid #ccc;
+      border-radius: 20px;
+      font-size: 1rem;
+    }
+    #send {
+      margin-left: 0.5rem;
+      padding: 0 1rem;
+      border: none;
+      border-radius: 20px;
+      background: #4a90e2;
+      color: #fff;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+    #send:hover { background: #357ab8; }
+  </style>
+</head>
+<body>
+  <div id="chat-container">
+    <header>
+      <span>ChatGPT Web Client</span>
+      <button id="new-chat">New Chat</button>
+    </header>
+    <div id="messages"></div>
+    <footer>
+      <input id="input" type="text" placeholder="Type a message..." autocomplete="off" />
+      <button id="send">Send</button>
+    </footer>
+  </div>
+
+  <script>
+    const messagesDiv = document.getElementById("messages");
+    const inputEl = document.getElementById("input");
+    const sendBtn = document.getElementById("send");
+    const newChatBtn = document.getElementById("new-chat");
+
+    // keep full history here
+    let conversation = [
+      { role: "system", content: "You are a helpful assistant." }
+    ];
+
+    function appendBubble(text, sender) {
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `message ${sender}`;
+      msgDiv.innerHTML = `<div class="bubble">${text}</div>`;
+      messagesDiv.appendChild(msgDiv);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      // add user message
+      conversation.push({ role: "user", content: text });
+      appendBubble(text, "user");
+      inputEl.value = "";
+
+      // call the backend with full history
+      try {
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: conversation })
+        });
+        const data = await res.json();
+        const reply = data.reply || data.error;
+
+        // add bot message
+        conversation.push({ role: "assistant", content: reply });
+        appendBubble(reply, "bot");
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    inputEl.addEventListener("keyup", e => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    newChatBtn.addEventListener("click", () => {
+      conversation = [
+        { role: "system", content: "You are a helpful assistant." }
+      ];
+      messagesDiv.innerHTML = "";
+      inputEl.value = "";
+      inputEl.focus();
+    });
+  </script>
+</body>
+</html>
